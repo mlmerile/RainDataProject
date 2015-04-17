@@ -7,6 +7,7 @@ This module give functionalities to manipulate Datas.
 The main representation of the Data is the Dataframe of Panda Library.
 """
 import pandas as pd
+import scipy.interpolate as sci
 import sys
 import logging
 
@@ -62,4 +63,22 @@ def read_raincsv(filename,nrows=None,unchanged_cols=("Id","Expected")):
 
     logging.debug("End of the processing (reading file)")
     return data
+
+def drop_data(d):
+    """
+    Drop useless columns
+
+    :param d: dataframe
+    """
+    return d.drop("Kdp")
+
+def select_not_nan(x,y):
+    return ([x[i] for i, elem in enumerate(y) if not pd.isnull(elem)],
+            [y[i] for i, elem in enumerate(y) if not pd.isnull(elem)])
+
+def extrapolate_cell(x,xi,yi,spline_order=3):
+    s = sci.InterpolatedUnivariateSpline(np.fliplr([xi])[0],np.fliplr([yi])[0],k=spline_order)
+    return np.fliplr([s(np.fliplr([x])[0])])[0]
+
+    
 
