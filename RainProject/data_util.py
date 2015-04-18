@@ -10,6 +10,8 @@ import pandas as pd
 import scipy.interpolate as sci
 import sys
 import logging
+import scipy.integrate as integrate
+import numpy as np
 
 ## DEBUG
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
@@ -80,5 +82,67 @@ def extrapolate_cell(x,xi,yi,spline_order=3):
     s = sci.InterpolatedUnivariateSpline(np.fliplr([xi])[0],np.fliplr([yi])[0],k=spline_order)
     return np.fliplr([s(np.fliplr([x])[0])])[0]
 
+
+def select_not_error(t,x) : 
+    return (np.array([t[i] for i, elem in enumerate(x) if elem>=0.0]),
+            np.array([x[i] for i, elem in enumerate(x) if elem>=0.0]))
+
+def reducetomean_signal(t,x):
+    """
+
+    :param t : list or np array , x = list or np array
+    """
+    #remove error and nan
+    (t,x) = select_not_nan(t,x)
+    (t,x) = select_not_error(t,x)
+    if len(x) == 0 :
+        return float("NaN")
+    if len(x) == 1 :
+        return x[0]
+
+    return (integrate.trapz(x,t) / ( t[-1] - t[0] ))
+
+
     
+def reducetomean(x):
+    return np.mean( x )
+
+def DistanceToRadarToIndex(dist):
+    res=list()
+    left=dist.copy()
+    while not len(left) == 0 : 
+        res.append(dist==left[0])
+        left=left[np.logical_not(left==left[0])]
+    return res
+
+def averageOverRadar(f,indices,t,x):
+    """
+
+    :param f : function, indices : list of np array, (t,x) = (np array ,np array)
+    """
+    res = list()
+    for l in indices : 
+        res.append( f(t[l],x[l]) )
+    return np.mean([ res[i] for i, elem in enumerate(res) if not np.isnan(elem) ] )
+
+
+def reduce_data(data, signalFunction):
+    
+    res=data.copy()
+    nbSample = len(data)
+    
+    for i in range(nbSample) : 
+        
+        #Distance to radar
+        index = DistanceToRadarToIndex(np.array(data.DistanceToRadar[i]))
+        res.DistanceToRadar[i] = reducetomean(data.DistanceToRadar[i])
+                
+        t = np.array(data.TimeToEnd[i])
+        for j in range(3,19):
+            res.iloc[i,j] = averageOverRadar(signalFunction,\
+            index, t, np.array(data.iloc[i,j]))
+
+
+    return res
+
 
