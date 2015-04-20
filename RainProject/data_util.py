@@ -146,3 +146,37 @@ def reduce_data(data, signalFunction):
     return res
 
 
+
+def hydrometeorType_dristribution(hydrometeorType) :
+    return np.histogram( hydrometeorType,bins=range(16))[0] \
+    / float(len(hydrometeorType))
+
+
+
+def signalToHist(array,rang=(0,10),bins=5,density=False):
+    return np.histogram( array,bins=bins,range=rang,density=density)[0]
+
+def removeError(l) :
+    return [ l[i] for i, elem in enumerate(l) if not (np.isnan(elem) or elem<-900\
+     or elem>900) ]
+
+def columnToHist(column):
+    column = column.apply(removeError)
+    hist=np.histogram([val for sublist in column.tolist() for val in sublist])
+    mi=hist[1][0]
+    ma=hist[1][-1]
+    return column.apply(signalToHist,rang=(mi,ma),density=True) 
+
+
+def dataToHist(data, columns,columnToHistFunction):
+    
+    res = data[columns].copy()    
+    
+    for j in columns : 
+        res[j] = columnToHistFunction(res[j])
+
+    return res
+    
+def dataFrameToMatrix(data) : 
+    return np.column_stack( [ np.vstack(data[i]) for i in data.columns ] )
+    
