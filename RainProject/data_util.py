@@ -12,6 +12,8 @@ import itertools as it
 import numpy as np
 import sys
 import logging
+import scipy.integrate as integrate
+import numpy as np
 
 ## DEBUG
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
@@ -141,7 +143,6 @@ def extrapolate_cell(x,xi,yi,spline_order):
 def extrapolate_inter(s,x_extra,spline_order):
     final_x = x_extra
     res = []
-
     res.append(s["Id"])
     current_x = s["TimeToEnd"];
     res.append(final_x)
@@ -167,4 +168,99 @@ def clean_data(data,x_extra=np.arange(61,-1,-1),spline_order=3):
 
     return data
 
+def select_not_error(t,x) : 
+    return (np.array([t[i] for i, elem in enumerate(x) if elem>=0.0]),
+            np.array([x[i] for i, elem in enumerate(x) if elem>=0.0]))
 
+def reducetomean_signal(t,x):
+    """
+
+    :param t : list or np array , x = list or np array
+    """
+    #remove error and nan
+    (t,x) = select_not_nan(t,x)
+    (t,x) = select_not_error(t,x)
+    if len(x) == 0 :
+        return float("NaN")
+    if len(x) == 1 :
+        return x[0]
+
+    return (integrate.trapz(x,t) / ( t[-1] - t[0] ))
+
+
+    
+def reducetomean(x):
+    return np.mean( x )
+
+def DistanceToRadarToIndex(dist):
+    res=list()
+    left=dist.copy()
+    while not len(left) == 0 : 
+        res.append(dist==left[0])
+        left=left[np.logical_not(left==left[0])]
+    return res
+
+def averageOverRadar(f,indices,t,x):
+    """
+
+    :param f : function, indices : list of np array, (t,x) = (np array ,np array)
+    """
+    res = list()
+    for l in indices : 
+        res.append( f(t[l],x[l]) )
+    return np.mean([ res[i] for i, elem in enumerate(res) if not np.isnan(elem) ] )
+
+
+def reduce_data(data, signalFunction):
+    
+    res=data.copy()
+    nbSample = len(data)
+    
+    for i in range(nbSample) : 
+        
+        #Distance to radar
+        index = DistanceToRadarToIndex(np.array(data.DistanceToRadar[i]))
+        res.DistanceToRadar[i] = reducetomean(data.DistanceToRadar[i])
+                
+        t = np.array(data.TimeToEnd[i])
+        for j in range(3,19):
+            res.iloc[i,j] = averageOverRadar(signalFunction,\
+            index, t, np.array(data.iloc[i,j]))
+
+    return res
+
+
+
+def hydrometeorType_dristribution(hydrometeorType) :
+    return np.histogram( hydrometeorType,bins=range(16))[0] \
+    / float(len(hydrometeorType))
+
+
+
+def signalToHist(array,rang=(0,10),bins=5,density=False):
+    return np.histogram( array,bins=bins,range=rang,density=density)[0]
+
+def removeError(l) :
+    return [ l[i] for i, elem in enumerate(l) if not (np.isnan(elem) or elem<-900\
+     or elem>900) ]
+
+def columnToHist(column):
+    column = column.apply(removeError)
+    hist=np.histogram([val for sublist in column.tolist() for val in sublist])
+    mi=hist[1][0]
+    ma=hist[1][-1]
+    return column.apply(signalToHist,rang=(mi,ma),density=True) 
+
+
+def dataToHist(data, columns,columnToHistFunction):
+    
+    res = data[columns].copy()    
+    
+    for j in columns : 
+        res[j] = columnToHistFunction(res[j])
+
+    return res
+    
+def dataFrameToMatrix(data) : 
+    return np.column_stack( [ np.vstack(data[i]) for i in data.columns ] )
+    
