@@ -8,6 +8,9 @@ The main representation of the Data is the Dataframe of Panda Library.
 """
 import pandas as pd
 import scipy.interpolate as sci
+from scipy import stats
+from collections import Counter
+from functools import partial
 import itertools as it
 import numpy as np
 import sys
@@ -186,8 +189,6 @@ def reducetomean_signal(t,x):
         return x[0]
 
     return (integrate.trapz(x,t) / ( t[-1] - t[0] ))
-
-
     
 def reducetomean(x):
     return np.mean( x )
@@ -202,7 +203,6 @@ def DistanceToRadarToIndex(dist):
 
 def averageOverRadar(f,indices,t,x):
     """
-
     :param f : function, indices : list of np array, (t,x) = (np array ,np array)
     """
     res = list()
@@ -212,7 +212,6 @@ def averageOverRadar(f,indices,t,x):
 
 
 def reduce_data(data, signalFunction):
-    
     res=data.copy()
     nbSample = len(data)
     
@@ -229,13 +228,9 @@ def reduce_data(data, signalFunction):
 
     return res
 
-
-
 def hydrometeorType_dristribution(hydrometeorType) :
     return np.histogram( hydrometeorType,bins=range(16))[0] \
     / float(len(hydrometeorType))
-
-
 
 def signalToHist(array,rang=(0,10),bins=5,density=False):
     return np.histogram( array,bins=bins,range=rang,density=density)[0]
@@ -251,9 +246,29 @@ def columnToHist(column):
     ma=hist[1][-1]
     return column.apply(signalToHist,rang=(mi,ma),density=True) 
 
+def signal_to_quantilehist(s,bin_edges):
+    hist,bins = np.histogram(s,bins=bin_edges,density=False)
+    if np.sum(hist) != 0:
+        hist = hist/float(np.sum(hist))
+    return hist
+    
+def column_to_quantilehist(column,nb_bins):
+    column = column.apply(removeError)
+    unpacked_col = [val for sublist in column.tolist() for val in sublist]
+    bin_edges = stats.mstats.mquantiles(unpacked_col,np.arange(nb_bins+1)/float(nb_bins))
+    dict_bin_edges = Counter(bin_edges)
+    bin_edges = sorted(sum([min(2,val)*(key,) for key,val in list(dict_bin_edges.items())],()))
+    for i,pair in enumerate(pairwise(bin_edges)):
+        a,b = pair
+        if a == b:
+            bin_edges[i+1] += float(1.0e-10)
+            
+    return column.apply(signal_to_quantilehist,args=(bin_edges,))
+
+def build_col_to_quantilehist(nb_bins):
+    return partial(column_to_quantilehist,nb_bins=nb_bins)
 
 def dataToHist(data, columns,columnToHistFunction):
-    
     res = data[columns].copy()    
     
     for j in columns : 
