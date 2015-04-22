@@ -8,7 +8,7 @@ data = du.read_raincsv("Data/train_2013.csv",1000)
 
 ##Create features
 X = du.dataFrameToMatrix( \
-du.dataToHist( data, ["RR1","MassWeightedMean","Composite"],du.columnToHist) )
+du.dataToHist( data, ["RR1","MassWeightedMean","Composite"],du.build_col_to_quantilehist(5)) )
 
 ##Remove nan values
 X[ np.isnan(X) ] = 0.0
