@@ -16,7 +16,6 @@ import numpy as np
 import sys
 import logging
 import scipy.integrate as integrate
-import numpy as np
 
 ## DEBUG
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)

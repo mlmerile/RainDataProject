@@ -8,7 +8,7 @@ data = du.read_raincsv("Data/train_2013.csv",100)
 
 ##Create features
 X = du.dataFrameToMatrix( \
-du.dataToHist( data, ["RR1","MassWeightedMean","Composite"],du.build_col_to_quantilehist(5)) )
+du.dataToHist( data, ["RR1"],du.build_col_to_quantilehist(5)) )
 
 ##Remove nan values
 X[ np.isnan(X) ] = 0.0
@@ -38,12 +38,4 @@ svc = svm.SVC(kernel=emdKernel, C=C).fit(X, Y)
 
 svc.score(X,Y)
 predicted_Y = svc.predict(X)
-<<<<<<< HEAD
 
- from pyemd import emd 
- first_signature = np.array([0.0, 1.0])
- second_signature = np.array([5.0, 3.0])
-distance_matrix = np.array([[0.0, 1.0], [1.0, 0.0]])
-emd(first_signature, second_signature,distance_matrix)
-=======
->>>>>>> 3b7f5fa3eb29690f2354f35e4d013440ecfe4e90
