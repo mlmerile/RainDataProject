@@ -168,7 +168,7 @@ def columnToHist(column):
     return column.apply(signalToHist,rang=(mi,ma),density=True) 
 
 
-def dataToHist(data, columns,columnToHistFunction):
+def dataToHist(data, columns, columnToHistFunction):
     
     res = data[columns].copy()    
     
