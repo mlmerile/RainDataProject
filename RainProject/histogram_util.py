@@ -76,9 +76,27 @@ def dataToHist(data,columnToHistFunction):
     return res
     
 def dist_hist(X,Y,distance_matrices) :
-    return sum([ emd(elemX,elemY,elemM) for (elemX,elemY,elemM)  \
-    in zip(X,Y,distance_matrices) ])
-    
+    start=0
+    size=0
+    l=[]
+    for M in distance_matrices :
+        size=M.shape[0]
+        l.append(emd(X[start:(start+size)],Y[start:(start+size)],M))
+
+        start+=size
+    return np.linalg.norm(l)
+
+def dist_hist_withoutnullhist(X,Y,distance_matrices) :
+    start=0
+    size=0
+    l=[]
+    for M in distance_matrices :
+        size=M.shape[0]
+        if sum(X[start:(start+size)]) != 0.0 and sum(Y[start:(start+size)]) != 0.0 :
+            l.append(emd(X[start:(start+size)],Y[start:(start+size)],M))
+        start+=size
+    return np.linalg.norm(l)
+
 
 def calc_to_distmatrix( calc ) :
     middles = [ (calc[i] + calc[i+1])/2.0 for (i,elem) in enumerate(calc[:-1]) ]
@@ -93,8 +111,9 @@ def build_dist_hist(data,calchist_function) :
     distance_matrices = map(calc_to_distmatrix,l)
     return partial(dist_hist,distance_matrices=distance_matrices)
 
-
-
-
+def build_dist_hist_withoutnullhist(data,calchist_function) :
+    l=calchist_function(du.removeErrorData(data))
+    distance_matrices = map(calc_to_distmatrix,l)
+    return partial(dist_hist_withoutnullhist,distance_matrices=distance_matrices)
 
 
