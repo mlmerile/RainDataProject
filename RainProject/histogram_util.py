@@ -29,7 +29,7 @@ def columnToHist(column):
     return column.apply(signalToHist,rang=(mi,ma),density=True) 
 
 def signal_to_quantilehist(s,bin_edges):
-    hist,bins = np.histogram(s,bins=bin_edges,density=False)
+    hist = np.histogram(s,bins=bin_edges,density=False)[0].astype(float)
     if np.sum(hist) != 0:
         hist = hist/float(np.sum(hist))
     return hist
@@ -64,13 +64,56 @@ def calc_bin_quantile(data,nb_bins):
 
     return res
 
-def dataToHist(data, columns,columnToHistFunction):
-    res = data[columns].copy()    
+def build_calc_bin_quantile(nb_bins):
+    return partial(calc_bin_quantile,nb_bins=nb_bins)
+
+def dataToHist(data,columnToHistFunction):
+    res = data.copy()    
     
-    for j in columns : 
+    for j in res.columns : 
         res[j] = columnToHistFunction(res[j])
 
     return res
     
+def dist_hist(X,Y,distance_matrices) :
+    start=0
+    size=0
+    l=[]
+    for M in distance_matrices :
+        size=M.shape[0]
+        l.append(emd(X[start:(start+size)],Y[start:(start+size)],M))
 
-    
+        start+=size
+    return np.linalg.norm(l)
+
+def dist_hist_withoutnullhist(X,Y,distance_matrices) :
+    start=0
+    size=0
+    l=[]
+    for M in distance_matrices :
+        size=M.shape[0]
+        if sum(X[start:(start+size)]) != 0.0 and sum(Y[start:(start+size)]) != 0.0 :
+            l.append(emd(X[start:(start+size)],Y[start:(start+size)],M))
+        start+=size
+    return np.linalg.norm(l)
+
+
+def calc_to_distmatrix( calc ) :
+    middles = [ (calc[i] + calc[i+1])/2.0 for (i,elem) in enumerate(calc[:-1]) ]
+    res = np.zeros((len(middles),len(middles)))
+    for (i,line) in enumerate(res) :
+        for (j,elem) in enumerate(line):
+            res[i,j]=np.linalg.norm(middles[i]-middles[j])
+    return res
+
+def build_dist_hist(data,calchist_function) :
+    l=calchist_function(du.removeErrorData(data))
+    distance_matrices = map(calc_to_distmatrix,l)
+    return partial(dist_hist,distance_matrices=distance_matrices)
+
+def build_dist_hist_withoutnullhist(data,calchist_function) :
+    l=calchist_function(du.removeErrorData(data))
+    distance_matrices = map(calc_to_distmatrix,l)
+    return partial(dist_hist_withoutnullhist,distance_matrices=distance_matrices)
+
+
