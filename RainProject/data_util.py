@@ -1,14 +1,12 @@
 """
 The Data Module
-===============
-
-This module give functionalities to manipulate Datas.
+=============== This module give functionalities to manipulate Datas.
 
 The main representation of the Data is the Dataframe of Panda Library.
 """
 import pandas as pd
 import scipy.interpolate as sci
-
+from sklearn.preprocessing import Imputer
 import itertools as it
 import numpy as np
 import sys
@@ -64,7 +62,6 @@ def separate_inter(x):
 
 def separate_radar(d):
     df = pd.concat([separate_inter(row) for i,row in d.iterrows()],axis=0)
-    print df
     return pd.concat([d,df], axis=0)
 
 def split_raindata(s):
@@ -132,7 +129,7 @@ def extrapolate_cell(x,xi,yi,spline_order):
     order = min(len(xi)-1,spline_order)
     if order < 1:
         if order < 0:
-            s = np.nan
+            s = [np.nan]*len(x)
         else:
             s = [yi[0] for i in range(len(x))]
     else:
@@ -154,19 +151,28 @@ def extrapolate_inter(s,x_extra,spline_order):
             final_y = extrapolate_cell(final_x,cleaned_current_x,cleaned_current_y,spline_order)
             res.append(final_y)
 
-    res.append(s["Expected"])
+    if "Expected" in s.index:
+        res.append(s["Expected"])
     return pd.Series(res,index=s.index)
     
 def extrapolate(d,x_extra=np.arange(61,-1,-1),spline_order=3):    
     return d.apply(extrapolate_inter,axis=1,args=(x_extra,spline_order))
 
-def clean_data(data,x_extra=np.arange(61,-1,-1),spline_order=3):
+def clean_data(data,col_drop=["TimeToEnd","Id","Expected"],x_extra=np.arange(61,-1,-1),imp_strat="mean",spline_order=3):
     data = drop_data(data)
     data = separate_radar(data)
     data = set_to_nan(data)
     data = extrapolate(data,x_extra,spline_order)
+    if "Expected" in data.columns:
+        expected = data["Expected"].values
+    else:
+        expected = None
+    data = data.drop(col_drop,1)
+    datamat = dataFrameToMatrix(data)
+    imp = Imputer(missing_values='NaN', strategy=imp_strat, axis=0)
+    datamat = imp.fit_transform(datamat)
 
-    return data
+    return (datamat,expected)
 
 def select_not_error(t,x) : 
     return (np.array([t[i] for i, elem in enumerate(x) if elem>=0.0]),
